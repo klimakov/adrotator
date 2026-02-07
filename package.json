@@ -1,0 +1,16 @@
+{
+  "name": "adrotator",
+  "version": "1.0.0",
+  "description": "Самостоятельный сервис для управления и показа рекламных баннеров. Аналог Яндекс Сетки / Google AdSense.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "playwright": "^1.58.2"
+  }
+}
