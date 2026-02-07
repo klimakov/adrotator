@@ -77,6 +77,8 @@ export default function Campaigns() {
                 <th className="px-5 py-3">Статус</th>
                 <th className="px-5 py-3">Креативы</th>
                 <th className="px-5 py-3">Показы</th>
+                <th className="px-5 py-3">Видимые</th>
+                <th className="px-5 py-3">Viewability</th>
                 <th className="px-5 py-3">Клики</th>
                 <th className="px-5 py-3">CTR</th>
                 <th className="px-5 py-3"></th>
@@ -84,14 +86,19 @@ export default function Campaigns() {
             </thead>
             <tbody className="divide-y">
               {campaigns.map((c) => {
-                const ctr = c.total_impressions > 0 ? ((c.total_clicks / c.total_impressions) * 100).toFixed(2) : '—';
+                const imp = Number(c.total_impressions);
+                const viewable = Number(c.total_viewable ?? 0);
+                const ctr = imp > 0 ? ((c.total_clicks / imp) * 100).toFixed(2) : '—';
+                const viewability = imp > 0 && viewable > 0 ? ((viewable / imp) * 100).toFixed(1) + '%' : '—';
                 return (
                   <tr key={c.id} className="hover:bg-gray-50">
                     <td className="px-5 py-3 text-gray-400">#{c.id}</td>
                     <td className="px-5 py-3 font-medium">{c.name}</td>
                     <td className="px-5 py-3">{statusBadge(c.status)}</td>
                     <td className="px-5 py-3">{c.creatives_count}</td>
-                    <td className="px-5 py-3">{Number(c.total_impressions).toLocaleString()}</td>
+                    <td className="px-5 py-3">{imp.toLocaleString()}</td>
+                    <td className="px-5 py-3">{viewable.toLocaleString()}</td>
+                    <td className="px-5 py-3">{viewability}</td>
                     <td className="px-5 py-3">{Number(c.total_clicks).toLocaleString()}</td>
                     <td className="px-5 py-3">{ctr}%</td>
                     <td className="px-5 py-3 text-right space-x-2">

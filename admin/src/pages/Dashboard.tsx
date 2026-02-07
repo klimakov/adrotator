@@ -7,8 +7,10 @@ interface Summary {
   active_placements: number;
   today_impressions: number;
   today_clicks: number;
+  today_viewable?: number;
   total_impressions: number;
   total_clicks: number;
+  total_viewable?: number;
 }
 
 interface DayStat {
@@ -41,20 +43,26 @@ export default function Dashboard() {
     );
   }
 
+  const todayViewability =
+    summary && summary.today_impressions > 0 && summary.today_viewable != null
+      ? ((summary.today_viewable / summary.today_impressions) * 100).toFixed(1) + '%'
+      : '—';
   const cards = summary
     ? [
         { label: 'Активных кампаний', value: summary.active_campaigns, color: 'bg-indigo-500' },
         { label: 'Активных креативов', value: summary.active_creatives, color: 'bg-emerald-500' },
         { label: 'Активных площадок', value: summary.active_placements, color: 'bg-amber-500' },
         { label: 'Показов сегодня', value: summary.today_impressions.toLocaleString(), color: 'bg-sky-500' },
+        { label: 'Видимых показов сегодня', value: (summary.today_viewable ?? 0).toLocaleString(), color: 'bg-teal-500' },
         { label: 'Кликов сегодня', value: summary.today_clicks.toLocaleString(), color: 'bg-pink-500' },
+        { label: 'Viewability сегодня', value: todayViewability, color: 'bg-violet-500' },
         {
           label: 'CTR сегодня',
           value:
             summary.today_impressions > 0
               ? ((summary.today_clicks / summary.today_impressions) * 100).toFixed(2) + '%'
               : '—',
-          color: 'bg-violet-500',
+          color: 'bg-rose-500',
         },
       ]
     : [];
@@ -77,9 +85,13 @@ export default function Dashboard() {
                   ? 'rgb(245 158 11)'
                   : c.color === 'bg-sky-500'
                     ? 'rgb(14 165 233)'
-                    : c.color === 'bg-pink-500'
+                    :             c.color === 'bg-pink-500'
                       ? 'rgb(236 72 153)'
-                      : 'rgb(139 92 246)';
+                      : c.color === 'bg-teal-500'
+                        ? 'rgb(20 184 166)'
+                        : c.color === 'bg-rose-500'
+                          ? 'rgb(244 63 94)'
+                          : 'rgb(139 92 246)';
           return (
             <div
               key={c.label}
@@ -97,10 +109,22 @@ export default function Dashboard() {
       {summary && (
         <div className="bg-white rounded-xl shadow-sm border p-5 mb-8">
           <h2 className="text-lg font-semibold mb-3">Всего за всё время</h2>
-          <div className="flex gap-8 text-sm">
+          <div className="flex flex-wrap gap-6 text-sm">
             <div>
               <span className="text-gray-500">Показы: </span>
               <span className="font-semibold">{summary.total_impressions.toLocaleString()}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Видимые показы: </span>
+              <span className="font-semibold">{(summary.total_viewable ?? 0).toLocaleString()}</span>
+            </div>
+            <div>
+              <span className="text-gray-500">Viewability: </span>
+              <span className="font-semibold">
+                {summary.total_impressions > 0 && summary.total_viewable != null
+                  ? ((summary.total_viewable / summary.total_impressions) * 100).toFixed(1) + '%'
+                  : '—'}
+              </span>
             </div>
             <div>
               <span className="text-gray-500">Клики: </span>

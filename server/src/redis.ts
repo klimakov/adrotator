@@ -26,3 +26,11 @@ export async function incrClick(creativeId: number, placementId: number): Promis
   await redis.hincrby(key, 'clicks', 1);
   await redis.expire(key, 172800);
 }
+
+/** Видимый показ (≥50% в viewport ≥1 сек, стандарт MRC) */
+export async function incrViewable(creativeId: number, placementId: number): Promise<void> {
+  const date = new Date().toISOString().slice(0, 10);
+  const key = `stats:${date}:${creativeId}:${placementId}`;
+  await redis.hincrby(key, 'viewable', 1);
+  await redis.expire(key, 172800);
+}

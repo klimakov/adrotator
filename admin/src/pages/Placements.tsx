@@ -61,6 +61,8 @@ export default function Placements() {
                 <th className="px-5 py-3">Размер</th>
                 <th className="px-5 py-3">Креативы</th>
                 <th className="px-5 py-3">Показы</th>
+                <th className="px-5 py-3">Видимые</th>
+                <th className="px-5 py-3">Viewability</th>
                 <th className="px-5 py-3">Клики</th>
                 <th className="px-5 py-3"></th>
               </tr>
@@ -79,6 +81,12 @@ export default function Placements() {
                   </td>
                   <td className="px-5 py-3">{p.creatives_count}</td>
                   <td className="px-5 py-3">{Number(p.total_impressions).toLocaleString()}</td>
+                  <td className="px-5 py-3">{Number(p.total_viewable ?? 0).toLocaleString()}</td>
+                  <td className="px-5 py-3">
+                    {Number(p.total_impressions) > 0 && Number(p.total_viewable ?? 0) > 0
+                      ? ((Number(p.total_viewable) / Number(p.total_impressions)) * 100).toFixed(1) + '%'
+                      : '—'}
+                  </td>
                   <td className="px-5 py-3">{Number(p.total_clicks).toLocaleString()}</td>
                   <td className="px-5 py-3 text-right space-x-2">
                     <Link to={`/placements/${p.id}/edit`} className="text-indigo-600 hover:underline">

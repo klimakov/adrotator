@@ -10,11 +10,13 @@ export async function statsRoutes(app: FastifyInstance) {
       query('SELECT COUNT(*)::int AS count FROM creatives WHERE status = $1', ['active']),
       query('SELECT COUNT(*)::int AS count FROM placements WHERE status = $1', ['active']),
       query(
-        `SELECT COALESCE(SUM(impressions),0)::int AS impressions, COALESCE(SUM(clicks),0)::int AS clicks
+        `SELECT COALESCE(SUM(impressions),0)::int AS impressions, COALESCE(SUM(clicks),0)::int AS clicks,
+                COALESCE(SUM(viewable_impressions),0)::int AS viewable_impressions
          FROM daily_stats WHERE date = CURRENT_DATE`
       ),
       query(
-        `SELECT COALESCE(SUM(impressions),0)::int AS impressions, COALESCE(SUM(clicks),0)::int AS clicks
+        `SELECT COALESCE(SUM(impressions),0)::int AS impressions, COALESCE(SUM(clicks),0)::int AS clicks,
+                COALESCE(SUM(viewable_impressions),0)::int AS viewable_impressions
          FROM daily_stats`
       ),
     ]);
@@ -25,15 +27,17 @@ export async function statsRoutes(app: FastifyInstance) {
       active_placements: placements.rows[0].count,
       today_impressions: today.rows[0].impressions,
       today_clicks: today.rows[0].clicks,
+      today_viewable: today.rows[0].viewable_impressions,
       total_impressions: total.rows[0].impressions,
       total_clicks: total.rows[0].clicks,
+      total_viewable: total.rows[0].viewable_impressions,
     };
   });
 
   // Статистика по дням (для графиков)
   app.get('/stats/daily', async (req, _reply) => {
     const { days = '30', campaign_id, placement_id } = req.query as any;
-    let sql = `SELECT date, SUM(impressions)::int AS impressions, SUM(clicks)::int AS clicks
+    let sql = `SELECT date, SUM(impressions)::int AS impressions, SUM(clicks)::int AS clicks, SUM(viewable_impressions)::int AS viewable_impressions
                FROM daily_stats WHERE date >= CURRENT_DATE - $1::int`;
     const params: any[] = [parseInt(days, 10)];
 
@@ -63,14 +67,18 @@ export async function statsRoutes(app: FastifyInstance) {
       const placementId = parseInt(parts[3], 10);
       const data = await redis.hgetall(key);
 
-      if (data.impressions || data.clicks) {
+      const impressions = parseInt(data.impressions || '0', 10);
+      const clicks = parseInt(data.clicks || '0', 10);
+      const viewable = parseInt(data.viewable || '0', 10);
+      if (impressions || clicks || viewable) {
         await query(
-          `INSERT INTO daily_stats (date, creative_id, placement_id, impressions, clicks)
-           VALUES ($1, $2, $3, $4, $5)
+          `INSERT INTO daily_stats (date, creative_id, placement_id, impressions, clicks, viewable_impressions)
+           VALUES ($1, $2, $3, $4, $5, $6)
            ON CONFLICT (date, creative_id, placement_id)
            DO UPDATE SET impressions = daily_stats.impressions + $4,
-                         clicks = daily_stats.clicks + $5`,
-          [date, creativeId, placementId, parseInt(data.impressions || '0', 10), parseInt(data.clicks || '0', 10)]
+                         clicks = daily_stats.clicks + $5,
+                         viewable_impressions = daily_stats.viewable_impressions + $6`,
+          [date, creativeId, placementId, impressions, clicks, viewable]
         );
         await redis.del(key);
         flushed++;

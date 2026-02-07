@@ -65,6 +65,35 @@
     // Трекинг показа (пиксель)
     var pixel = new Image();
     pixel.src = SERVER + '/api/track/impression/' + ad.id + '?p=' + (ad.placement_id || '') + '&t=' + Date.now();
+
+    // Видимый показ (MRC: ≥50% в viewport ≥1 сек) — киллер-фича vs конкуренты
+    if (typeof IntersectionObserver !== 'undefined' && ad.placement_id) {
+      var viewableSent = false;
+      var viewableTimer = null;
+      var isVisible = false;
+      var io = new IntersectionObserver(
+        function (entries) {
+          if (viewableSent) return;
+          var e = entries[0];
+          isVisible = e.isIntersecting;
+          if (isVisible && !viewableTimer) {
+            viewableTimer = setTimeout(function () {
+              if (viewableSent || !isVisible) return;
+              viewableSent = true;
+              if (io) io.disconnect();
+              var v = new Image();
+              v.src = SERVER + '/api/track/viewable/' + ad.id + '?p=' + ad.placement_id + '&t=' + Date.now();
+            }, 1000);
+          }
+          if (!isVisible && viewableTimer) {
+            clearTimeout(viewableTimer);
+            viewableTimer = null;
+          }
+        },
+        { threshold: 0.5 }
+      );
+      io.observe(wrapper);
+    }
   }
 
   function loadZone(zoneKey, element) {

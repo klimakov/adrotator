@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { query, queryOne } from '../db';
-import { incrImpression, incrClick } from '../redis';
+import { incrImpression, incrClick, incrViewable } from '../redis';
 
 export async function trackRoutes(app: FastifyInstance) {
   // Трекинг показа (1×1 пиксель)
@@ -71,5 +71,26 @@ export async function trackRoutes(app: FastifyInstance) {
       return reply.redirect(redirect);
     }
     return reply.code(204).send();
+  });
+
+  // Видимый показ (MRC: ≥50% баннера в viewport ≥1 сек) — вызывается из SDK после Intersection Observer
+  const pixelGif = Buffer.from(
+    'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+    'base64'
+  );
+  app.get('/track/viewable/:creativeId', async (req, reply) => {
+    const { creativeId } = req.params as { creativeId: string };
+    const { p: placementId } = req.query as { p?: string };
+    const cid = parseInt(creativeId, 10);
+    if (Number.isNaN(cid)) return reply.code(400).send({ error: 'Invalid creative id' });
+    const pid = placementId ? parseInt(placementId, 10) : null;
+    if (placementId != null && Number.isNaN(Number(placementId))) return reply.code(400).send({ error: 'Invalid placement id' });
+
+    if (pid) incrViewable(cid, pid).catch(() => {});
+
+    reply.header('Content-Type', 'image/gif');
+    reply.header('Cache-Control', 'no-store, no-cache, must-revalidate');
+    reply.header('Access-Control-Allow-Origin', '*');
+    return reply.send(pixelGif);
   });
 }

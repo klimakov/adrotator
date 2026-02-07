@@ -58,14 +58,18 @@ async function main() {
         const creativeId = parseInt(parts[2], 10);
         const placementId = parseInt(parts[3], 10);
         const data = await redis.hgetall(key);
-        if (data.impressions || data.clicks) {
+        const impressions = parseInt(data.impressions || '0', 10);
+        const clicks = parseInt(data.clicks || '0', 10);
+        const viewable = parseInt(data.viewable || '0', 10);
+        if (impressions || clicks || viewable) {
           await pool.query(
-            `INSERT INTO daily_stats (date, creative_id, placement_id, impressions, clicks)
-             VALUES ($1, $2, $3, $4, $5)
+            `INSERT INTO daily_stats (date, creative_id, placement_id, impressions, clicks, viewable_impressions)
+             VALUES ($1, $2, $3, $4, $5, $6)
              ON CONFLICT (date, creative_id, placement_id)
              DO UPDATE SET impressions = daily_stats.impressions + $4,
-                           clicks = daily_stats.clicks + $5`,
-            [date, creativeId, placementId, parseInt(data.impressions || '0', 10), parseInt(data.clicks || '0', 10)]
+                           clicks = daily_stats.clicks + $5,
+                           viewable_impressions = daily_stats.viewable_impressions + $6`,
+            [date, creativeId, placementId, impressions, clicks, viewable]
           );
           await redis.del(key);
         }
@@ -77,11 +81,12 @@ async function main() {
 
   // Применить миграции при старте
   try {
-    const migrationPath = path.join(__dirname, 'migrations', '001_initial.sql');
-    if (fs.existsSync(migrationPath)) {
-      const sql = fs.readFileSync(migrationPath, 'utf-8');
+    const migrationsDir = path.join(__dirname, 'migrations');
+    const files = fs.readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort();
+    for (const file of files) {
+      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
       await pool.query(sql);
-      app.log.info('Migrations applied');
+      app.log.info(`Migration applied: ${file}`);
     }
   } catch (err: any) {
     app.log.error('Migration error:', err.message);

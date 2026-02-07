@@ -8,7 +8,8 @@ export async function campaignRoutes(app: FastifyInstance) {
       `SELECT c.*, 
               COUNT(DISTINCT cr.id) AS creatives_count,
               COALESCE(SUM(ds.impressions), 0)::int AS total_impressions,
-              COALESCE(SUM(ds.clicks), 0)::int AS total_clicks
+              COALESCE(SUM(ds.clicks), 0)::int AS total_clicks,
+              COALESCE(SUM(ds.viewable_impressions), 0)::int AS total_viewable
        FROM campaigns c
        LEFT JOIN creatives cr ON cr.campaign_id = c.id
        LEFT JOIN daily_stats ds ON ds.creative_id = cr.id
