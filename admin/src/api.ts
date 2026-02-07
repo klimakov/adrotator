@@ -32,6 +32,10 @@ export async function uploadImage(file: File): Promise<{ url: string }> {
   const form = new FormData();
   form.append('file', file);
   const res = await fetch(`${BASE}/creatives/upload`, { method: 'POST', body: form });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || 'Ошибка загрузки');
+  }
   return res.json();
 }
 

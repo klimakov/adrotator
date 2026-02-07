@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { query } from '../db';
+import { query, queryOne } from '../db';
 import { incrImpression, incrClick } from '../redis';
 
 export async function trackRoutes(app: FastifyInstance) {
@@ -12,7 +12,9 @@ export async function trackRoutes(app: FastifyInstance) {
     const referer = req.headers['referer'] || '';
 
     const cid = parseInt(creativeId, 10);
+    if (Number.isNaN(cid)) return reply.code(400).send({ error: 'Invalid creative id' });
     const pid = placementId ? parseInt(placementId, 10) : null;
+    if (placementId != null && Number.isNaN(Number(placementId))) return reply.code(400).send({ error: 'Invalid placement id' });
 
     // Асинхронно записать в БД
     query(
@@ -45,13 +47,13 @@ export async function trackRoutes(app: FastifyInstance) {
     const referer = req.headers['referer'] || '';
 
     const cid = parseInt(creativeId, 10);
+    if (Number.isNaN(cid)) return reply.code(400).send({ error: 'Invalid creative id' });
 
     // Определить placement_id по zone
     let pid: number | null = null;
     if (zone) {
-      const { queryOne } = require('../db');
-      const pl = await queryOne('SELECT id FROM placements WHERE zone_key = $1', [zone]);
-      pid = pl?.id || null;
+      const pl = await queryOne<{ id: number }>('SELECT id FROM placements WHERE zone_key = $1', [zone]);
+      pid = pl?.id ?? null;
     }
 
     // Записать клик
