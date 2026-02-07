@@ -96,9 +96,23 @@
     }
   }
 
+  function getUid() {
+    try {
+      var k = 'ar_uid';
+      if (localStorage.getItem(k)) return localStorage.getItem(k);
+      var u = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem(k, u);
+      return u;
+    } catch (e) {
+      return '';
+    }
+  }
+
   function loadZone(zoneKey, element) {
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', SERVER + '/api/serve/' + encodeURIComponent(zoneKey), true);
+    var uid = getUid();
+    var url = SERVER + '/api/serve/' + encodeURIComponent(zoneKey) + (uid ? '?uid=' + encodeURIComponent(uid) : '');
+    xhr.open('GET', url, true);
     xhr.onreadystatechange = function () {
       if (xhr.readyState === 4) {
         if (xhr.status === 200) {

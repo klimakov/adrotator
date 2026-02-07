@@ -48,12 +48,13 @@ export async function creativeRoutes(app: FastifyInstance) {
     return reply.code(201).send(row);
   });
 
-  // Загрузка изображения для креатива
+  const ALLOWED_IMAGE_EXT = ['.png', '.jpg', '.jpeg', '.gif', '.webp'];
   app.post('/creatives/upload', async (req, reply) => {
     const data = await req.file();
     if (!data) return reply.code(400).send({ error: 'No file uploaded' });
 
-    const ext = path.extname(data.filename) || '.png';
+    const rawExt = path.extname(data.filename).toLowerCase();
+    const ext = ALLOWED_IMAGE_EXT.includes(rawExt) ? rawExt : '.png';
     const filename = `${uuid()}${ext}`;
     const uploadDir = config.uploadDir;
 

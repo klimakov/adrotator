@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getCreatives, deleteCreative } from '../api';
+
+type CreativesSortKey = 'name' | 'campaign_name' | 'type' | 'width' | 'height';
 
 export default function Creatives() {
   const [creatives, setCreatives] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<CreativesSortKey>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   const load = () => {
     setLoading(true);
@@ -22,16 +26,45 @@ export default function Creatives() {
     load();
   };
 
+  const sortedCreatives = useMemo(() => {
+    return [...creatives].sort((a, b) => {
+      const va = a[sortBy] ?? '';
+      const vb = b[sortBy] ?? '';
+      const cmp = String(va).localeCompare(String(vb), undefined, { sensitivity: 'base' });
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+  }, [creatives, sortBy, sortDir]);
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Креативы</h1>
-        <Link
-          to="/creatives/new"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        >
-          + Новый креатив
-        </Link>
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-gray-500">Сортировка:</span>
+          <select
+            value={`${sortBy}-${sortDir}`}
+            onChange={(e) => {
+              const [k, d] = e.target.value.split('-') as [CreativesSortKey, 'asc' | 'desc'];
+              setSortBy(k);
+              setSortDir(d);
+            }}
+            className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white"
+          >
+            <option value="name-asc">По названию (А→Я)</option>
+            <option value="name-desc">По названию (Я→А)</option>
+            <option value="campaign_name-asc">По кампании (А→Я)</option>
+            <option value="campaign_name-desc">По кампании (Я→А)</option>
+            <option value="type-asc">По типу</option>
+            <option value="width-desc">По ширине (↓)</option>
+            <option value="width-asc">По ширине (↑)</option>
+          </select>
+          <Link
+            to="/creatives/new"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            + Новый креатив
+          </Link>
+        </div>
       </div>
 
       {loading ? (
@@ -51,7 +84,7 @@ export default function Creatives() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {creatives.map((c) => (
+          {sortedCreatives.map((c) => (
             <div key={c.id} className="bg-white rounded-xl shadow-sm border overflow-hidden">
               {c.image_url && (
                 <div className="bg-gray-100 flex items-center justify-center p-4 h-48">
@@ -68,6 +101,9 @@ export default function Creatives() {
                     <h3 className="font-medium text-sm">{c.name}</h3>
                     <p className="text-xs text-gray-400 mt-0.5">
                       {c.campaign_name} &middot; {c.width}x{c.height} &middot; {c.type}
+                      {c.effective_weight != null && (
+                        <span className="ml-1 text-teal-600" title="A/B вес по CTR"> &middot; A/B: {c.effective_weight}</span>
+                      )}
                     </p>
                   </div>
                   <span

@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { query, queryOne } from '../db';
 import { incrImpression, incrClick, incrViewable } from '../redis';
+import { isRedirectUrlAllowed, isWebhookUrlSafe } from '../url-validate';
 
 export async function trackRoutes(app: FastifyInstance) {
   // Трекинг показа (1×1 пиксель)
@@ -56,18 +57,50 @@ export async function trackRoutes(app: FastifyInstance) {
       pid = pl?.id ?? null;
     }
 
-    // Записать клик
-    query(
-      'INSERT INTO clicks (creative_id, placement_id, ip_address, user_agent, referer) VALUES ($1,$2,$3,$4,$5)',
-      [cid, pid, ip, ua, referer]
-    ).catch((err) => console.error('Click log error:', err.message));
+    let clickId: number | null = null;
+    try {
+      const res = await query(
+        'INSERT INTO clicks (creative_id, placement_id, ip_address, user_agent, referer) VALUES ($1,$2,$3,$4,$5) RETURNING id',
+        [cid, pid, ip, ua, referer]
+      );
+      clickId = (res.rows[0] as { id: number })?.id ?? null;
+    } catch (err) {
+      req.log?.error?.(err, 'Click log error');
+    }
 
     if (pid) {
       incrClick(cid, pid).catch(() => {});
     }
 
-    // Редирект на целевую страницу
+    // Webhook: асинхронный POST на URL кампании при клике
+    const campaign = await queryOne<{ campaign_id: number; webhook_url: string | null }>(
+      'SELECT c.id AS campaign_id, c.webhook_url FROM campaigns c JOIN creatives cr ON cr.campaign_id = c.id WHERE cr.id = $1',
+      [cid]
+    );
+    if (campaign?.webhook_url && isWebhookUrlSafe(campaign.webhook_url)) {
+      const payload = JSON.stringify({
+        event: 'click',
+        campaign_id: campaign.campaign_id,
+        creative_id: cid,
+        placement_id: pid,
+        click_id: clickId,
+        ip,
+        user_agent: ua,
+        referer: referer || null,
+        timestamp: new Date().toISOString(),
+      });
+      fetch(campaign.webhook_url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload,
+      }).catch((err) => req.log?.warn?.(err, 'Webhook POST failed'));
+    }
+
+    // Редирект на целевую страницу (только разрешённые URL — защита от Open Redirect)
     if (redirect) {
+      if (!isRedirectUrlAllowed(redirect)) {
+        return reply.code(400).send({ error: 'Invalid redirect URL' });
+      }
       return reply.redirect(redirect);
     }
     return reply.code(204).send();

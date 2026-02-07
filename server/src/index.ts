@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
+import rateLimit from '@fastify/rate-limit';
 import staticPlugin from '@fastify/static';
 import path from 'path';
 import fs from 'fs';
@@ -22,8 +23,11 @@ async function main() {
     trustProxy: true,
   });
 
-  // Плагины
   await app.register(cors, { origin: config.corsOrigin });
+  await app.register(rateLimit, {
+    max: 300,
+    timeWindow: '1 minute',
+  });
   await app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } });
 
   // Статические файлы (загруженные креативы)
@@ -37,7 +41,19 @@ async function main() {
     decorateReply: false,
   });
 
-  // Роуты
+  // Опциональная аутентификация по API Key для админских роутов
+  app.addHook('onRequest', async (req, reply) => {
+    if (!config.apiKey) return;
+    const pathname = req.url?.split('?')[0] || '';
+    const adminPaths = ['/campaigns', '/creatives', '/placements', '/stats'];
+    const isAdmin = adminPaths.some((p) => pathname === p || pathname.startsWith(p + '/'));
+    if (!isAdmin) return;
+    const key = req.headers['x-api-key'] as string;
+    if (key !== config.apiKey) {
+      return reply.code(401).send({ error: 'Missing or invalid X-API-Key' });
+    }
+  });
+
   await app.register(campaignRoutes);
   await app.register(creativeRoutes);
   await app.register(placementRoutes);
@@ -79,6 +95,32 @@ async function main() {
     }
   }, 5 * 60 * 1000);
 
+  // A/B: пересчёт effective_weight по CTR за последние 48ч (раз в час)
+  const abInterval = setInterval(async () => {
+    try {
+      await pool.query(`
+        WITH stats AS (
+          SELECT creative_id, SUM(impressions)::int AS imp, SUM(clicks)::int AS cl
+          FROM daily_stats WHERE date >= CURRENT_DATE - 2
+          GROUP BY creative_id
+          HAVING SUM(impressions) >= 50
+        )
+        UPDATE creatives cr SET effective_weight = LEAST(100, GREATEST(1,
+          ROUND((cr.weight::numeric * (1 + (s.cl::numeric / NULLIF(s.imp, 0)) * 20))::numeric)::int))
+        FROM stats s WHERE cr.id = s.creative_id
+      `);
+      await pool.query(`
+        UPDATE creatives SET effective_weight = NULL
+        WHERE id NOT IN (
+          SELECT creative_id FROM daily_stats WHERE date >= CURRENT_DATE - 2
+          GROUP BY creative_id HAVING SUM(impressions) >= 50
+        )
+      `);
+    } catch (err: any) {
+      app.log.error('A/B weight update error:', err.message);
+    }
+  }, 60 * 60 * 1000);
+
   // Применить миграции при старте
   try {
     const migrationsDir = path.join(__dirname, 'migrations');
@@ -95,6 +137,7 @@ async function main() {
   // Запуск
   app.addHook('onClose', async () => {
     clearInterval(flushInterval);
+    clearInterval(abInterval);
     await pool.end();
     redis.disconnect();
   });

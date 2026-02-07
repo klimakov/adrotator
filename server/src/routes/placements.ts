@@ -59,12 +59,14 @@ export async function placementRoutes(app: FastifyInstance) {
     return row;
   });
 
-  // Привязать креативы к площадке
+  const MAX_CREATIVES_PER_PLACEMENT = 500;
   app.post('/placements/:id/creatives', async (req, reply) => {
     const { id } = req.params as { id: string };
     const { creative_ids } = req.body as { creative_ids: number[] };
+    if (!Array.isArray(creative_ids) || creative_ids.length > MAX_CREATIVES_PER_PLACEMENT) {
+      return reply.code(400).send({ error: `creative_ids must be an array with at most ${MAX_CREATIVES_PER_PLACEMENT} items` });
+    }
 
-    // Очистить старые и вставить новые
     await query('DELETE FROM placement_creatives WHERE placement_id = $1', [id]);
     for (const cid of creative_ids) {
       await query(

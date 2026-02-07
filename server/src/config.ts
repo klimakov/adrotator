@@ -6,4 +6,6 @@ export const config = {
   corsOrigin: process.env.CORS_ORIGIN || '*',
   uploadDir: process.env.UPLOAD_DIR || './uploads',
   nodeEnv: process.env.NODE_ENV || 'development',
+  /** Если задан — для /campaigns, /creatives, /placements, /stats требуется заголовок X-API-Key */
+  apiKey: process.env.API_KEY || '',
 };

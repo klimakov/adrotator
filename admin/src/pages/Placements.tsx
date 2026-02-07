@@ -1,10 +1,34 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getPlacements, deletePlacement } from '../api';
+
+type SortKey = 'id' | 'name' | 'site_domain' | 'zone_key' | 'creatives_count' | 'total_impressions' | 'total_viewable' | 'total_clicks' | 'viewability';
+type SortDir = 'asc' | 'desc';
+
+function PlacementsTh({
+  colKey, sortBy, sortDir, onSort, onDir, children,
+}: {
+  colKey: SortKey; sortBy: SortKey; sortDir: SortDir; onSort: (k: SortKey) => void; onDir: (d: SortDir) => void; children: React.ReactNode;
+}) {
+  const toggle = () => {
+    if (sortBy === colKey) onDir(sortDir === 'asc' ? 'desc' : 'asc');
+    else { onSort(colKey); onDir('asc'); }
+  };
+  return (
+    <th className="px-5 py-3">
+      <button type="button" onClick={toggle} className="text-left text-xs text-gray-500 uppercase tracking-wider hover:text-gray-700 flex items-center gap-1">
+        {children}
+        {sortBy === colKey && (sortDir === 'asc' ? ' ↑' : ' ↓')}
+      </button>
+    </th>
+  );
+}
 
 export default function Placements() {
   const [placements, setPlacements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<SortKey>('id');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
 
   const load = () => {
     setLoading(true);
@@ -21,6 +45,24 @@ export default function Placements() {
     await deletePlacement(id);
     load();
   };
+
+  const sortedPlacements = useMemo(() => {
+    const list = placements.map((p) => ({
+      ...p,
+      _viewability: Number(p.total_impressions) > 0 && Number(p.total_viewable ?? 0) > 0
+        ? (Number(p.total_viewable) / Number(p.total_impressions)) * 100
+        : 0,
+    }));
+    return [...list].sort((a, b) => {
+      let va: number | string = a[sortBy];
+      let vb: number | string = b[sortBy];
+      if (sortBy === 'viewability') { va = a._viewability; vb = b._viewability; }
+      if (typeof va === 'number' && typeof vb === 'number') return sortDir === 'asc' ? va - vb : vb - va;
+      const sa = String(va ?? '').toLowerCase();
+      const sb = String(vb ?? '').toLowerCase();
+      return sortDir === 'asc' ? sa.localeCompare(sb) : sb.localeCompare(sa);
+    });
+  }, [placements, sortBy, sortDir]);
 
   return (
     <div>
@@ -54,21 +96,21 @@ export default function Placements() {
           <table className="w-full text-sm min-w-[800px]">
             <thead className="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wider">
               <tr>
-                <th className="px-5 py-3">ID</th>
-                <th className="px-5 py-3">Название</th>
-                <th className="px-5 py-3">Домен</th>
-                <th className="px-5 py-3">Zone Key</th>
+                <PlacementsTh sortBy={sortBy} sortDir={sortDir} onSort={setSortBy} onDir={setSortDir} colKey="id">ID</PlacementsTh>
+                <PlacementsTh sortBy={sortBy} sortDir={sortDir} onSort={setSortBy} onDir={setSortDir} colKey="name">Название</PlacementsTh>
+                <PlacementsTh sortBy={sortBy} sortDir={sortDir} onSort={setSortBy} onDir={setSortDir} colKey="site_domain">Домен</PlacementsTh>
+                <PlacementsTh sortBy={sortBy} sortDir={sortDir} onSort={setSortBy} onDir={setSortDir} colKey="zone_key">Zone Key</PlacementsTh>
                 <th className="px-5 py-3">Размер</th>
-                <th className="px-5 py-3">Креативы</th>
-                <th className="px-5 py-3">Показы</th>
-                <th className="px-5 py-3">Видимые</th>
-                <th className="px-5 py-3">Viewability</th>
-                <th className="px-5 py-3">Клики</th>
+                <PlacementsTh sortBy={sortBy} sortDir={sortDir} onSort={setSortBy} onDir={setSortDir} colKey="creatives_count">Креативы</PlacementsTh>
+                <PlacementsTh sortBy={sortBy} sortDir={sortDir} onSort={setSortBy} onDir={setSortDir} colKey="total_impressions">Показы</PlacementsTh>
+                <PlacementsTh sortBy={sortBy} sortDir={sortDir} onSort={setSortBy} onDir={setSortDir} colKey="total_viewable">Видимые</PlacementsTh>
+                <PlacementsTh sortBy={sortBy} sortDir={sortDir} onSort={setSortBy} onDir={setSortDir} colKey="viewability">Viewability</PlacementsTh>
+                <PlacementsTh sortBy={sortBy} sortDir={sortDir} onSort={setSortBy} onDir={setSortDir} colKey="total_clicks">Клики</PlacementsTh>
                 <th className="px-5 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y">
-              {placements.map((p) => (
+              {sortedPlacements.map((p) => (
                 <tr key={p.id} className="hover:bg-gray-50">
                   <td className="px-5 py-3 text-gray-400">#{p.id}</td>
                   <td className="px-5 py-3 font-medium">{p.name}</td>

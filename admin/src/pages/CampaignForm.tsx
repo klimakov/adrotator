@@ -14,6 +14,8 @@ export default function CampaignForm() {
     total_budget: 0,
     start_date: '',
     end_date: '',
+    frequency_cap: '' as string | number,
+    webhook_url: '',
   });
   const [saving, setSaving] = useState(false);
 
@@ -27,6 +29,8 @@ export default function CampaignForm() {
           total_budget: c.total_budget || 0,
           start_date: c.start_date ? c.start_date.slice(0, 16) : '',
           end_date: c.end_date ? c.end_date.slice(0, 16) : '',
+          frequency_cap: c.frequency_cap ?? '',
+          webhook_url: c.webhook_url || '',
         })
       );
     }
@@ -118,6 +122,27 @@ export default function CampaignForm() {
               onChange={(e) => set('end_date', e.target.value)}
             />
           </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Frequency cap (макс. показов на юзера в день)</label>
+          <input
+            type="number"
+            min="0"
+            placeholder="Не ограничивать"
+            className="w-full border rounded-lg px-3 py-2 text-sm"
+            value={form.frequency_cap}
+            onChange={(e) => set('frequency_cap', e.target.value === '' ? '' : parseInt(e.target.value, 10) || 0)}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Webhook URL (POST при клике)</label>
+          <input
+            type="url"
+            placeholder="https://..."
+            className="w-full border rounded-lg px-3 py-2 text-sm"
+            value={form.webhook_url}
+            onChange={(e) => set('webhook_url', e.target.value)}
+          />
         </div>
         <div className="flex gap-3">
           <button

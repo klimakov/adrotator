@@ -1,10 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getCampaigns, deleteCampaign } from '../api';
+
+type SortKey = 'id' | 'name' | 'status' | 'creatives_count' | 'total_impressions' | 'total_viewable' | 'total_clicks' | 'ctr' | 'viewability';
+type SortDir = 'asc' | 'desc';
 
 export default function Campaigns() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<SortKey>('id');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
 
   const load = () => {
     setLoading(true);
@@ -40,6 +45,45 @@ export default function Campaigns() {
     );
   };
 
+  const sortedCampaigns = useMemo(() => {
+    const list = campaigns.map((c) => ({
+      ...c,
+      _viewability: Number(c.total_impressions) > 0 && Number(c.total_viewable ?? 0) > 0
+        ? (Number(c.total_viewable) / Number(c.total_impressions)) * 100
+        : 0,
+      _ctr: Number(c.total_impressions) > 0 ? (c.total_clicks / Number(c.total_impressions)) * 100 : 0,
+    }));
+    return [...list].sort((a, b) => {
+      let va: number | string = a[sortBy];
+      let vb: number | string = b[sortBy];
+      if (sortBy === 'viewability') { va = a._viewability; vb = b._viewability; }
+      if (sortBy === 'ctr') { va = a._ctr; vb = b._ctr; }
+      if (typeof va === 'number' && typeof vb === 'number') return sortDir === 'asc' ? va - vb : vb - va;
+      const sa = String(va ?? '').toLowerCase();
+      const sb = String(vb ?? '').toLowerCase();
+      const cmp = sa.localeCompare(sb);
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+  }, [campaigns, sortBy, sortDir]);
+
+  const toggleSort = (key: SortKey) => {
+    if (sortBy === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortBy(key); setSortDir('asc'); }
+  };
+
+  const Th = ({ colKey, children }: { colKey: SortKey; children: React.ReactNode }) => (
+    <th className="px-5 py-3">
+      <button
+        type="button"
+        onClick={() => toggleSort(colKey)}
+        className="text-left text-xs text-gray-500 uppercase tracking-wider hover:text-gray-700 flex items-center gap-1"
+      >
+        {children}
+        {sortBy === colKey && (sortDir === 'asc' ? ' ↑' : ' ↓')}
+      </button>
+    </th>
+  );
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -72,20 +116,20 @@ export default function Campaigns() {
           <table className="w-full text-sm min-w-[700px]">
             <thead className="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wider">
               <tr>
-                <th className="px-5 py-3">ID</th>
-                <th className="px-5 py-3">Название</th>
-                <th className="px-5 py-3">Статус</th>
-                <th className="px-5 py-3">Креативы</th>
-                <th className="px-5 py-3">Показы</th>
-                <th className="px-5 py-3">Видимые</th>
-                <th className="px-5 py-3">Viewability</th>
-                <th className="px-5 py-3">Клики</th>
-                <th className="px-5 py-3">CTR</th>
+                <Th colKey="id">ID</Th>
+                <Th colKey="name">Название</Th>
+                <Th colKey="status">Статус</Th>
+                <Th colKey="creatives_count">Креативы</Th>
+                <Th colKey="total_impressions">Показы</Th>
+                <Th colKey="total_viewable">Видимые</Th>
+                <Th colKey="viewability">Viewability</Th>
+                <Th colKey="total_clicks">Клики</Th>
+                <Th colKey="ctr">CTR</Th>
                 <th className="px-5 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y">
-              {campaigns.map((c) => {
+              {sortedCampaigns.map((c) => {
                 const imp = Number(c.total_impressions);
                 const viewable = Number(c.total_viewable ?? 0);
                 const ctr = imp > 0 ? ((c.total_clicks / imp) * 100).toFixed(2) : '—';

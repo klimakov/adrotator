@@ -1,8 +1,15 @@
 const BASE = import.meta.env.VITE_API_URL || '/api';
+const API_KEY = import.meta.env.VITE_API_KEY;
+
+function defaultHeaders(): Record<string, string> {
+  const h: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (API_KEY) h['X-API-Key'] = API_KEY;
+  return h;
+}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    headers: { ...defaultHeaders(), ...(options?.headers as Record<string, string>) },
     ...options,
   });
   if (res.status === 204) return null as T;
@@ -31,7 +38,9 @@ export const deleteCreative = (id: number) => request<any>(`/creatives/${id}`, {
 export async function uploadImage(file: File): Promise<{ url: string }> {
   const form = new FormData();
   form.append('file', file);
-  const res = await fetch(`${BASE}/creatives/upload`, { method: 'POST', body: form });
+  const headers: Record<string, string> = {};
+  if (API_KEY) headers['X-API-Key'] = API_KEY;
+  const res = await fetch(`${BASE}/creatives/upload`, { method: 'POST', body: form, headers });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error || 'Ошибка загрузки');

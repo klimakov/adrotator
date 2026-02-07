@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { queryMany, queryOne, query } from '../db';
+import { isWebhookUrlSafe } from '../url-validate';
 
 export async function campaignRoutes(app: FastifyInstance) {
   // Список кампаний
@@ -29,11 +30,16 @@ export async function campaignRoutes(app: FastifyInstance) {
 
   // Создать кампанию
   app.post('/campaigns', async (req, reply) => {
-    const { name, status, daily_budget, total_budget, start_date, end_date } = req.body as any;
+    const { name, status, daily_budget, total_budget, start_date, end_date, frequency_cap, webhook_url } = req.body as any;
+    const fc = frequency_cap === '' || frequency_cap == null ? null : parseInt(String(frequency_cap), 10);
+    let wu: string | null = webhook_url === '' || webhook_url == null ? null : (webhook_url || null);
+    if (wu && !isWebhookUrlSafe(wu)) {
+      return reply.code(400).send({ error: 'webhook_url is not allowed (use a public http/https URL)' });
+    }
     const row = await queryOne(
-      `INSERT INTO campaigns (name, status, daily_budget, total_budget, start_date, end_date)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [name, status || 'active', daily_budget || 0, total_budget || 0, start_date, end_date]
+      `INSERT INTO campaigns (name, status, daily_budget, total_budget, start_date, end_date, frequency_cap, webhook_url)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [name, status || 'active', daily_budget || 0, total_budget || 0, start_date, end_date, fc, wu]
     );
     return reply.code(201).send(row);
   });
@@ -41,12 +47,17 @@ export async function campaignRoutes(app: FastifyInstance) {
   // Обновить кампанию
   app.put('/campaigns/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
-    const { name, status, daily_budget, total_budget, start_date, end_date } = req.body as any;
+    const { name, status, daily_budget, total_budget, start_date, end_date, frequency_cap, webhook_url } = req.body as any;
+    const fc = frequency_cap === '' || frequency_cap == null ? null : parseInt(String(frequency_cap), 10);
+    let wu: string | null = webhook_url === '' || webhook_url == null ? null : (webhook_url || null);
+    if (wu && !isWebhookUrlSafe(wu)) {
+      return reply.code(400).send({ error: 'webhook_url is not allowed (use a public http/https URL)' });
+    }
     const row = await queryOne(
       `UPDATE campaigns SET name=$1, status=$2, daily_budget=$3, total_budget=$4,
-       start_date=$5, end_date=$6, updated_at=NOW()
-       WHERE id=$7 RETURNING *`,
-      [name, status, daily_budget, total_budget, start_date, end_date, id]
+       start_date=$5, end_date=$6, frequency_cap=$7, webhook_url=$8, updated_at=NOW()
+       WHERE id=$9 RETURNING *`,
+      [name, status, daily_budget, total_budget, start_date, end_date, fc, wu, id]
     );
     if (!row) return reply.code(404).send({ error: 'Campaign not found' });
     return row;
