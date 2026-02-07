@@ -35,9 +35,20 @@ export default function Creatives() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-gray-500">Загрузка...</div>
+        <div className="flex flex-col items-center justify-center py-16 gap-3 text-gray-500">
+          <div className="spinner" aria-hidden />
+          <span>Загрузка...</span>
+        </div>
       ) : creatives.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">Нет креативов.</div>
+        <div className="bg-white rounded-xl shadow-sm border p-12 text-center">
+          <p className="text-gray-500 mb-4">Нет креативов. Добавьте первый баннер.</p>
+          <Link
+            to="/creatives/new"
+            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            + Новый креатив
+          </Link>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {creatives.map((c) => (
@@ -64,14 +75,19 @@ export default function Creatives() {
                       c.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                     }`}
                   >
-                    {c.status}
+                    {c.status === 'active' ? 'Активен' : 'Пауза'}
                   </span>
                 </div>
                 <div className="flex gap-2 mt-3 text-xs">
                   <Link to={`/creatives/${c.id}/edit`} className="text-indigo-600 hover:underline">
                     Изменить
                   </Link>
-                  <button onClick={() => handleDelete(c.id, c.name)} className="text-red-500 hover:underline">
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(c.id, c.name)}
+                    className="text-red-500 hover:underline"
+                    aria-label={`Удалить креатив ${c.name}`}
+                  >
                     Удалить
                   </button>
                 </div>

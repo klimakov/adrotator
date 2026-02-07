@@ -19,6 +19,7 @@ export default function PlacementForm() {
   const [selectedCreatives, setSelectedCreatives] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
   const [snippet, setSnippet] = useState('');
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     getCreatives().then(setAllCreatives);
@@ -173,7 +174,11 @@ export default function PlacementForm() {
             >
               {saving ? 'Сохранение...' : isEdit ? 'Сохранить' : 'Создать'}
             </button>
-            <button type="button" onClick={() => navigate('/placements')} className="text-gray-500 hover:text-gray-700 text-sm">
+            <button
+              type="button"
+              onClick={() => navigate('/placements')}
+              className="px-5 py-2 rounded-lg text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+            >
               Отмена
             </button>
           </div>
@@ -188,9 +193,13 @@ export default function PlacementForm() {
             <button
               type="button"
               className="mt-3 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-xs font-medium transition-colors"
-              onClick={() => navigator.clipboard.writeText(snippet)}
+              onClick={() => {
+                navigator.clipboard.writeText(snippet);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2500);
+              }}
             >
-              Скопировать код
+              {copied ? 'Скопировано' : 'Скопировать код'}
             </button>
           </div>
         )}

@@ -32,7 +32,14 @@ export default function Dashboard() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="text-center py-12 text-gray-500">Загрузка...</div>;
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3 text-gray-500">
+        <div className="spinner" aria-hidden />
+        <span>Загрузка...</span>
+      </div>
+    );
+  }
 
   const cards = summary
     ? [
@@ -60,13 +67,30 @@ export default function Dashboard() {
 
       {/* Карточки */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-        {cards.map((c) => (
-          <div key={c.label} className="bg-white rounded-xl shadow-sm border p-5">
-            <div className={`inline-block w-3 h-3 rounded-full ${c.color} mr-2`} />
-            <span className="text-sm text-gray-500">{c.label}</span>
-            <div className="text-3xl font-bold mt-2">{c.value}</div>
-          </div>
-        ))}
+        {cards.map((c) => {
+          const accent =
+            c.color === 'bg-indigo-500'
+              ? 'rgb(99 102 241)'
+              : c.color === 'bg-emerald-500'
+                ? 'rgb(16 185 129)'
+                : c.color === 'bg-amber-500'
+                  ? 'rgb(245 158 11)'
+                  : c.color === 'bg-sky-500'
+                    ? 'rgb(14 165 233)'
+                    : c.color === 'bg-pink-500'
+                      ? 'rgb(236 72 153)'
+                      : 'rgb(139 92 246)';
+          return (
+            <div
+              key={c.label}
+              className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 border-l-4"
+              style={{ borderLeftColor: accent }}
+            >
+              <span className="text-sm text-gray-500">{c.label}</span>
+              <div className="text-3xl font-bold mt-2">{c.value}</div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Всего */}

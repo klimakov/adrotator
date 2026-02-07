@@ -54,10 +54,11 @@ export default function CampaignForm() {
       <h1 className="text-2xl font-bold mb-6">{isEdit ? 'Редактировать кампанию' : 'Новая кампания'}</h1>
       <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border p-6 max-w-lg space-y-5">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Название</label>
+          <label htmlFor="campaign-name" className="block text-sm font-medium text-gray-700 mb-1">Название</label>
           <input
+            id="campaign-name"
             required
-            className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             value={form.name}
             onChange={(e) => set('name', e.target.value)}
           />
@@ -126,7 +127,11 @@ export default function CampaignForm() {
           >
             {saving ? 'Сохранение...' : isEdit ? 'Сохранить' : 'Создать'}
           </button>
-          <button type="button" onClick={() => navigate('/campaigns')} className="text-gray-500 hover:text-gray-700 text-sm">
+          <button
+            type="button"
+            onClick={() => navigate('/campaigns')}
+            className="px-5 py-2 rounded-lg text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+          >
             Отмена
           </button>
         </div>

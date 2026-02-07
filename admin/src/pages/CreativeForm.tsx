@@ -198,7 +198,11 @@ export default function CreativeForm() {
           >
             {saving ? 'Сохранение...' : isEdit ? 'Сохранить' : 'Создать'}
           </button>
-          <button type="button" onClick={() => navigate('/creatives')} className="text-gray-500 hover:text-gray-700 text-sm">
+          <button
+            type="button"
+            onClick={() => navigate('/creatives')}
+            className="px-5 py-2 rounded-lg text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+          >
             Отмена
           </button>
         </div>
